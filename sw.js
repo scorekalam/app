@@ -1,5 +1,5 @@
 // Caches the app so it works offline. Bump VERSION when you change any file.
-const VERSION = 'badminton-v1';
+const VERSION = 'badminton-v2';
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

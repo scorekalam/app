@@ -41,7 +41,7 @@
 
   .score {
     position: absolute; transform: translate(-50%, -50%); cursor: pointer; z-index: 2;
-    background: rgba(0,0,0,.55); border: 2px solid transparent; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,.35);
+    background: radial-gradient(ellipse at center, rgba(0,0,0,.38) 0%, rgba(0,0,0,.22) 40%, rgba(0,0,0,0) 72%); border: 2px solid transparent; border-radius: 50%;
     padding: calc(var(--cw) * .025) calc(var(--cw) * .07) calc(var(--cw) * .02);
     min-width: calc(var(--cw) * .32);
     font-size: calc(var(--cw) * .24); font-weight: 800; line-height: 1; color: #fff;
@@ -111,12 +111,12 @@
   .controls button:active { background: #334155; }
 
   /* Sheets / dialogs */
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: flex-end; justify-content: center; z-index: 20; }
+  .overlay { position: fixed; left: 0; right: 0; top: var(--vvtop, 0px); height: var(--vvh, 100%); background: rgba(0,0,0,.7); display: none; align-items: flex-end; justify-content: center; z-index: 20; }
   .overlay.center { align-items: center; }
   .overlay.show { display: flex; }
   .sheet {
     background: #1e293b; width: 100%; max-width: 520px; border-radius: 20px 20px 0 0;
-    padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); max-height: 88vh; overflow-y: auto;
+    padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); max-height: calc(var(--vvh, 100vh) * .92); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y;
     user-select: text; -webkit-user-select: text;
   }
   .overlay.center .sheet { border-radius: 20px; margin: 16px; text-align: center; }
@@ -139,10 +139,19 @@
   th { color: #94a3b8; font-weight: 500; }
   .muted { color: #64748b; font-size: .85rem; }
   .win-title { font-size: 1.6rem; color: var(--gold); margin-bottom: 6px; }
-  .rotate { display: none; position: fixed; inset: 0; z-index: 30; background: #0f172a;
-            flex-direction: column; align-items: center; justify-content: center; gap: 10px; font-size: 1.1rem; }
-  .rotate div { font-size: 3rem; }
-  @media (orientation: landscape) and (max-height: 520px) { .rotate { display: flex; } }
+  /* Layout wrapper: portrait = court above, banner + buttons below. Landscape = court left, panel right */
+  .main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .side { display: flex; flex-direction: column; }
+  @media (orientation: landscape) {
+    .topbar { padding: 4px 10px; }
+    .icon-btn { width: 34px; height: 34px; }
+    .chips { padding-bottom: 4px; }
+    .main { flex-direction: row; }
+    .courtWrap { padding: 0 6px 6px 10px; }
+    .side { width: 150px; justify-content: center; gap: 6px; padding: 0 10px 8px 0; }
+    .side .controls, .side .controls.two { grid-template-columns: 1fr; padding: 0; }
+    .side .banner { font-size: .85rem; padding: 4px; -webkit-line-clamp: 4; }
+  }
   /* Big golden point banner across the net */
   .golden-banner {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; pointer-events: none;
@@ -155,22 +164,78 @@
   .golden-banner span { display: block; font-size: calc(var(--cw) * .045); font-weight: 700; }
   .golden-banner.show { display: block; }
   @keyframes goldPulse { 50% { transform: translate(-50%, -50%) scale(1.06); } }
+  /* Screens */
+  .view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .view.hidden { display: none; }
+  .back-btn { font-size: 1.4rem; }
+
+  /* Matches list */
+  .home-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 6px; }
+  .home-head h1 { flex: 1; font-size: 1.15rem; }
+  .home-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 6px 12px 10px; }
+  .home-actions .btn { padding: 13px 8px; }
+  .match-list { flex: 1; overflow-y: auto; padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .match {
+    background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 12px;
+    display: flex; align-items: center; gap: 10px; cursor: pointer;
+  }
+  .match.live { border-color: var(--gold); }
+  .match.done { opacity: .75; }
+  .match .info { flex: 1; min-width: 0; }
+  .match .meta { font-size: .75rem; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .match .names { font-weight: 600; margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .match .names .vs { color: #64748b; font-weight: 400; }
+  .match .res { font-size: .82rem; color: #cbd5e1; font-variant-numeric: tabular-nums; }
+  .badge { font-size: .68rem; font-weight: 700; border-radius: 999px; padding: 2px 8px; display: inline-block; margin-right: 6px; }
+  .badge.live { background: var(--gold); color: #111; }
+  .badge.next { background: #334155; color: #cbd5e1; }
+  .badge.done { background: #14532d; color: #bbf7d0; }
+  .match .play { background: #334155; border: none; color: #fff; width: 40px; height: 40px; border-radius: 50%; font-size: 1rem; flex: none; }
+  .match.live .play { background: var(--gold); color: #111; }
+  .match .del { background: none; border: none; color: #64748b; font-size: 1.1rem; width: 32px; height: 40px; flex: none; }
+  .empty { text-align: center; color: #64748b; padding: 40px 16px; line-height: 1.6; }
+  .home-foot { padding: 0 12px 12px; }
+  .home-foot .btn { width: 100%; }
+
+  /* Add-match form: format summary instead of all format fields */
+  .fmt-summary { display: flex; align-items: center; gap: 8px; background: #0f172a; border: 1px solid #334155;
+                 border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: .9rem; }
+  .fmt-summary span { flex: 1; color: #cbd5e1; }
+  .fmt-summary button { background: none; border: none; color: var(--gold); font-weight: 700; font-size: .9rem; }
+  .toast { position: fixed; left: 50%; bottom: 96px; max-width: 88vw; text-align: center; box-shadow: 0 6px 18px rgba(0,0,0,.4); transform: translateX(-50%); background: #14532d; color: #fff;
+           padding: 8px 16px; border-radius: 999px; font-weight: 600; z-index: 40; display: none; }
+  .toast.show { display: block; }
 </style>
 </head>
 <body>
-<div class="rotate"><div>📱</div>Please hold your phone upright</div>
 
+<!-- ===== Matches list ===== -->
+<div class="view hidden" id="homeView">
+  <div class="home-head"><h1>🏸 Matches</h1></div>
+  <div class="home-actions">
+    <button class="btn primary" onclick="openAddMatch()">＋ Add match</button>
+    <button class="btn" onclick="quickMatch()">⚡ Quick match</button>
+  </div>
+  <div class="match-list" id="matchList"></div>
+  <div class="home-foot"><button class="btn" id="copyAllBtn" onclick="copyAllResults()">Copy all results</button></div>
+</div>
+
+<!-- ===== Scoring ===== -->
+<div class="view" id="scoreView">
 <div class="topbar">
+  <button class="icon-btn back-btn" onclick="goHome()" aria-label="Back to matches">‹</button>
   <div class="title" id="title">🏸 Badminton</div>
   <button class="icon-btn" onclick="show('history')" aria-label="Results">📋</button>
   <button class="icon-btn" onclick="openSettings()" aria-label="Settings">⚙️</button>
 </div>
 <div class="chips" id="chips"></div>
 
+<div class="main">
 <div class="courtWrap" id="courtWrap">
   <div class="court" id="court">
     <!-- Court lines, real dimensions in cm: 610 x 1340 -->
-    <svg class="lines" viewBox="0 0 610 1340" preserveAspectRatio="none">
+    <svg class="lines" id="linesSvg" viewBox="0 0 610 1340" preserveAspectRatio="none">
+     <g id="courtG">
       <g stroke="#fff" stroke-width="7" fill="none">
         <rect x="3.5" y="3.5" width="603" height="1333"/>
         <line x1="46" y1="0" x2="46" y2="1340"/>
@@ -185,6 +250,7 @@
       <!-- Net -->
       <line x1="-10" y1="670" x2="620" y2="670" stroke="#e2e8f0" stroke-width="12"/>
       <line x1="-10" y1="670" x2="620" y2="670" stroke="#334155" stroke-width="12" stroke-dasharray="6 6"/>
+     </g>
     </svg>
 
 
@@ -199,6 +265,7 @@
   </div>
 </div>
 
+<div class="side">
 <div class="banner" id="banner">Tap a score to add a point</div>
 
 <div class="controls">
@@ -206,11 +273,15 @@
   <button onclick="swapEnds()"><span>⇅</span>Switch ends</button>
   <button id="serverBtn" onclick="toggleServe()"><span>🏸</span>Server</button>
 </div>
+</div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
 
 <!-- Settings sheet -->
 <div class="overlay" id="settings" onclick="if(event.target===this)closeAll()">
   <div class="sheet">
-    <h2>Match setup</h2>
+    <h2 id="setupTitle">Match setup</h2>
     <div class="field"><label>Event / Round</label><input id="inEvent" placeholder="e.g. Men's Singles – QF"></div>
     <div class="field"><label>Match type</label>
       <select id="inMode" onchange="$('settings').classList.toggle('doubles-mode', this.value === 'd')">
@@ -226,11 +297,11 @@
       <div class="field"><label>🔴 Partner</label><input id="inB1" placeholder="Partner B"></div>
     </div>
     <p class="muted doubles-only" style="margin-bottom:12px">Tip: at 0–0 of each game, tap a player on the court to swap that pair between the right and left boxes (decides who serves / receives first).</p>
-    <div class="row">
-      <div class="field"><label>Court</label><input id="inCourt" placeholder="1"></div>
-      <div class="field"><label>Games</label>
-        <select id="inFormat"><option value="3">Best of 3</option><option value="1">Single game</option><option value="5">Best of 5</option></select>
-      </div>
+    <div class="field"><label>Court</label><input id="inCourt" placeholder="1" inputmode="numeric"></div>
+    <div class="fmt-summary" id="fmtSummary"><span id="fmtText"></span><button type="button" onclick="showFmtFields()">Change</button></div>
+    <div id="fmtFields">
+    <div class="field"><label>Games</label>
+      <select id="inFormat"><option value="3">Best of 3</option><option value="1">Single game</option><option value="5">Best of 5</option></select>
     </div>
     <div class="field"><label>Points per game</label>
       <select id="inTarget">
@@ -245,11 +316,17 @@
         <option value="1">Golden point – next point wins</option>
       </select>
     </div>
-    <div class="btns">
-      <button class="btn primary" onclick="saveSettings()">Save</button>
-      <button class="btn danger" onclick="askReset()">New match</button>
     </div>
-    <p class="muted" style="margin-top:10px">Changing match type, games, points or deuce rule starts a new match.</p>
+    <div class="btns" id="editBtns">
+      <button class="btn primary" onclick="saveSettings()">Save</button>
+      <button class="btn danger" onclick="askReset()">Restart match</button>
+    </div>
+    <p class="muted" id="editNote" style="margin-top:10px">Changing match type, games, points or deuce rule restarts this match.</p>
+    <div class="btns" id="addBtns">
+      <button class="btn" onclick="addMatch(false)">＋ Add &amp; next</button>
+      <button class="btn primary" onclick="addMatch(true)">▶ Add &amp; start</button>
+    </div>
+    <p class="muted" id="addNote" style="margin-top:10px">“Add &amp; next” saves this match and keeps the form open for the next one.</p>
   </div>
 </div>
 
@@ -269,10 +346,10 @@
 <div class="overlay center" id="confirm">
   <div class="sheet">
     <h2 id="confirmTitle">Start a new match?</h2>
-    <p class="muted" style="margin-bottom:12px">The current scores will be cleared.</p>
+    <p class="muted" id="confirmText" style="margin-bottom:12px">The current scores will be cleared.</p>
     <div class="btns">
       <button class="btn" onclick="closeAll()">Cancel</button>
-      <button class="btn danger" onclick="const f = pendingConfirm; closeAll(); f && f()">Yes, start new</button>
+      <button class="btn danger" id="confirmBtn" onclick="const f = pendingConfirm; closeAll(); f && f()">Yes, start new</button>
     </div>
   </div>
 </div>
@@ -283,16 +360,18 @@
     <div class="win-title" id="winTitle"></div>
     <p id="winText" style="margin-bottom:14px"></p>
     <div class="btns">
-      <button class="btn" onclick="closeAll()">Close</button>
-      <button class="btn primary" onclick="resetMatch(); closeAll()">New match</button>
+      <button class="btn" onclick="goHome()">Matches</button>
+      <button class="btn primary" id="nextBtn" onclick="startNextMatch()">Next match →</button>
     </div>
+    <button class="btn" style="width:100%;margin-top:10px;background:none;color:#94a3b8" onclick="closeAll()">Close</button>
   </div>
 </div>
 
 <script>
   const $ = id => document.getElementById(id);
   const CAP = { 21: 30, 15: 21, 11: 15 };
-  const KEY = 'badminton-scoreboard-v1';
+  const KEY = 'badminton-scoreboard-v1';      // old single-match storage (migrated once)
+  const STORE_KEY = 'scorekalam-matches-v1';
 
   let cfg = { event: '', doubles: false, players: [['Player A', 'Partner A'], ['Player B', 'Partner B']],
               court: '', format: 3, target: 21, golden: false };
@@ -325,13 +404,33 @@
   const serverK = () => (cfg.doubles ? (st.right[st.side] === 0 ? 0 : 1) ^ (serveBox() === 'R' ? 0 : 1) : 0);
   const receiverK = () => (cfg.doubles ? (st.right[1 - st.side] === 0 ? 0 : 1) ^ (serveBox() === 'R' ? 0 : 1) : 0);
 
-  // ---- Save / load on this phone ----
-  function save() { try { localStorage.setItem(KEY, JSON.stringify({ cfg, st, hist: hist.slice(-200) })); } catch (e) {} }
+  // ---- Matches list, saved on this phone ----
+  // store.matches = [{ id, cfg, st, hist }], store.currentId = match on the court, store.last = format copied into new matches
+  let store = { matches: [], currentId: null, view: 'home',
+                last: { event: '', court: '', doubles: false, format: 3, target: 21, golden: false } };
+  const curMatch = () => store.matches.find(m => m.id === store.currentId);
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+  function save() {
+    const m = curMatch();
+    if (m) { m.cfg = cfg; m.st = st; m.hist = hist.slice(-200); }
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
+  }
   function load() {
     try {
-      const d = JSON.parse(localStorage.getItem(KEY));
-      if (d && d.cfg && d.st && d.cfg.players && d.st.right) { cfg = d.cfg; st = d.st; hist = d.hist || []; }
+      const d = JSON.parse(localStorage.getItem(STORE_KEY));
+      if (d && Array.isArray(d.matches)) { store = Object.assign(store, d); }
+      else {
+        const old = JSON.parse(localStorage.getItem(KEY));          // one-time upgrade from the single-match version
+        if (old && old.cfg && old.st && old.cfg.players && old.st.right && (old.hist || []).length) {
+          const id = newId();
+          store.matches.push({ id, cfg: old.cfg, st: old.st, hist: old.hist || [] });
+          store.currentId = id; store.view = 'score';
+        }
+      }
     } catch (e) {}
+    const m = curMatch();
+    if (m) { cfg = m.cfg; st = m.st; hist = m.hist || []; } else store.view = 'home';
   }
   function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
 
@@ -417,12 +516,30 @@
   function swapEnds() { hist.push(clone(st)); st.swapped = !st.swapped; st.msg = 'Ends switched'; render(); save(); }
   function resetMatch() { st = fresh(); hist = []; render(); save(); }
   let pendingConfirm = null;
-  function askConfirm(title, fn) { closeAll(); $('confirmTitle').textContent = title; pendingConfirm = fn; show('confirm'); }
-  function askReset() { askConfirm('Start a new match?', resetMatch); }
+  function askConfirm(title, fn, btn = 'Yes, start new', sub = 'The current scores will be cleared.') {
+    closeAll(); $('confirmTitle').textContent = title; $('confirmBtn').textContent = btn; $('confirmText').textContent = sub;
+    pendingConfirm = fn; show('confirm');
+  }
+  function askReset() { askConfirm('Restart this match?', resetMatch, 'Yes, restart'); }
   const matchInProgress = () => hist.length > 0 && !st.over;
 
   // ---- Settings ----
+  let setupMode = 'edit';
+  function setSetupMode(mode) {
+    setupMode = mode;
+    const add = mode === 'add';
+    $('setupTitle').textContent = add ? 'Add match' : 'Match setup';
+    for (const id of ['addBtns', 'addNote', 'fmtSummary']) $(id).style.display = add ? '' : 'none';
+    for (const id of ['editBtns', 'editNote']) $(id).style.display = add ? 'none' : '';
+    $('fmtFields').style.display = add ? 'none' : '';
+  }
+  function showFmtFields() { $('fmtSummary').style.display = 'none'; $('fmtFields').style.display = ''; }
+  function fmtLabel(f) {
+    return `${f.format === 1 ? 'Single game' : 'Best of ' + f.format} · ${f.target} pts · ${f.golden ? 'Golden point' : 'Win by 2'}`;
+  }
+
   function openSettings() {
+    setSetupMode('edit');
     $('inEvent').value = cfg.event;
     $('inMode').value = cfg.doubles ? 'd' : 's';
     $('settings').classList.toggle('doubles-mode', cfg.doubles);
@@ -456,13 +573,121 @@
     else apply();
   }
 
-  // ---- Results ----
-  function resultText() {
-    const head = [cfg.event, cfg.court && `Court ${cfg.court}`].filter(Boolean).join(' · ');
-    const games = st.results.map(r => `${r.s[0]}-${r.s[1]}`).join(', ');
-    const status = st.over ? `${sideName(st.results[st.results.length - 1].w)} won` : `In progress (Game ${st.gameNo}: ${st.scores[0]}-${st.scores[1]})`;
-    return `${head ? head + '\n' : ''}${sideName(0)} vs ${sideName(1)}\n${games || 'No games finished'}\n${status}`;
+  // ---- Matches ----
+  function readForm() {
+    return {
+      event: $('inEvent').value.trim(), court: $('inCourt').value.trim(), doubles: $('inMode').value === 'd',
+      players: [[$('inA0').value.trim() || 'Player A', $('inA1').value.trim() || 'Partner A'],
+                [$('inB0').value.trim() || 'Player B', $('inB1').value.trim() || 'Partner B']],
+      format: +$('inFormat').value, target: +$('inTarget').value, golden: $('inGolden').value === '1' };
   }
+  function openAddMatch() {
+    const L = store.last;
+    setSetupMode('add');
+    $('inEvent').value = L.event; $('inCourt').value = L.court;
+    $('inMode').value = L.doubles ? 'd' : 's'; $('settings').classList.toggle('doubles-mode', !!L.doubles);
+    for (const id of ['inA0', 'inA1', 'inB0', 'inB1']) $(id).value = '';
+    $('inFormat').value = L.format; $('inTarget').value = L.target; $('inGolden').value = L.golden ? '1' : '0';
+    updatePointLabels();
+    $('fmtText').textContent = fmtLabel(L);
+    show('settings');
+  }
+  function createMatch(c) {
+    const m = { id: newId(), cfg: c, st: fresh(), hist: [] };
+    store.matches.push(m);
+    store.last = { event: c.event, court: c.court, doubles: c.doubles, format: c.format, target: c.target, golden: c.golden };
+    return m;
+  }
+  function addMatch(start) {
+    const m = createMatch(readForm());
+    if (start) { closeAll(); openMatch(m.id); return; }
+    save(); renderHome();
+    toast(`Added: ${nameOf(m.cfg, 0)} vs ${nameOf(m.cfg, 1)}`);
+    for (const id of ['inA0', 'inA1', 'inB0', 'inB1']) $(id).value = '';   // ready for the next match
+    $('fmtText').textContent = fmtLabel(store.last);
+    $('inA0').focus();
+  }
+  function quickMatch() {
+    const L = store.last;
+    const m = createMatch({ event: 'Quick match', court: '', doubles: !!L.doubles,
+      players: [['Player A', 'Partner A'], ['Player B', 'Partner B']], format: L.format, target: L.target, golden: L.golden });
+    store.last.event = L.event === 'Quick match' ? '' : L.event;   // don't copy "Quick match" into listed matches
+    openMatch(m.id);
+  }
+  function openMatch(id) {
+    save();
+    const m = store.matches.find(x => x.id === id); if (!m) return;
+    store.currentId = id; store.view = 'score';
+    cfg = m.cfg; st = m.st; hist = m.hist || [];
+    closeAll();
+    $('homeView').classList.add('hidden'); $('scoreView').classList.remove('hidden');
+    lastLand = null; fitCourt(); render(); save();
+  }
+  function goHome() {
+    save(); closeAll();
+    store.view = 'home'; save();
+    $('scoreView').classList.add('hidden'); $('homeView').classList.remove('hidden');
+    renderHome();
+  }
+  const statusOf = m => (m.st.over ? 'done' : ((m.hist || []).length || m.st.results.length || m.st.scores[0] || m.st.scores[1]) ? 'live' : 'next');
+  const nextMatch = () => store.matches.find(m => m.id !== store.currentId && statusOf(m) === 'next');
+  function startNextMatch() { const n = nextMatch(); if (n) openMatch(n.id); else goHome(); }
+  function deleteMatch(id, ev) {
+    ev.stopPropagation();
+    const m = store.matches.find(x => x.id === id);
+    askConfirm(`Delete ${nameOf(m.cfg, 0)} vs ${nameOf(m.cfg, 1)}?`, () => {
+      store.matches = store.matches.filter(x => x.id !== id);
+      if (store.currentId === id) store.currentId = null;
+      save(); renderHome();
+    }, 'Delete', 'This match and its score will be removed from this phone.');
+  }
+  function renderHome() {
+    const list = $('matchList');
+    if (!store.matches.length) {
+      list.innerHTML = '<div class="empty">No matches yet.<br>Tap <b>＋ Add match</b> to plan matches one by one,<br>or <b>⚡ Quick match</b> to start scoring now.</div>';
+      $('copyAllBtn').style.display = 'none';
+      return;
+    }
+    $('copyAllBtn').style.display = '';
+    const label = { live: 'LIVE', next: 'NEXT', done: 'DONE' };
+    list.innerHTML = store.matches.map(m => {
+      const s = statusOf(m), c = m.cfg, t = m.st;
+      const meta = [c.event, c.court && `Court ${c.court}`, c.doubles ? 'Doubles' : 'Singles'].filter(Boolean).join(' · ');
+      const games = t.results.map(r => `${r.s[0]}–${r.s[1]}`);
+      if (s === 'live') games.push(`<b>${t.scores[0]}–${t.scores[1]}</b>`);
+      const res = s === 'next' ? fmtLabel(c) : games.join(', ') + (s === 'done' ? ` · 🏆 ${esc(nameOf(c, t.results[t.results.length - 1].w))}` : '');
+      return `<div class="match ${s}" onclick="openMatch('${m.id}')">
+        <div class="info">
+          <div class="meta"><span class="badge ${s}">${label[s]}</span>${esc(meta)}</div>
+          <div class="names">${esc(nameOf(c, 0))} <span class="vs">vs</span> ${esc(nameOf(c, 1))}</div>
+          <div class="res">${res}</div>
+        </div>
+        <button class="del" onclick="deleteMatch('${m.id}', event)" aria-label="Delete match">🗑</button>
+        <button class="play" aria-label="Open match">${s === 'done' ? '👁' : '▶'}</button>
+      </div>`;
+    }).join('');
+  }
+  async function copyAllResults() {
+    const text = store.matches.filter(m => statusOf(m) !== 'next').map(m => resultTextFor(m.cfg, m.st)).join('\n\n') || 'No results yet';
+    try { await navigator.clipboard.writeText(text); $('copyAllBtn').textContent = 'Copied ✓'; }
+    catch (e) { $('copyAllBtn').textContent = 'Copy not allowed'; }
+    setTimeout(() => $('copyAllBtn').textContent = 'Copy all results', 1500);
+  }
+  let toastTimer;
+  function toast(msg) {
+    $('toast').textContent = msg; $('toast').classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('show'), 1600);
+  }
+
+  // ---- Results ----
+  const nameOf = (c, p) => c.doubles ? `${c.players[p][0]} / ${c.players[p][1]}` : c.players[p][0];
+  function resultTextFor(c, t) {
+    const head = [c.event, c.court && `Court ${c.court}`].filter(Boolean).join(' · ');
+    const games = t.results.map(r => `${r.s[0]}-${r.s[1]}`).join(', ');
+    const status = t.over ? `${nameOf(c, t.results[t.results.length - 1].w)} won` : `In progress (Game ${t.gameNo}: ${t.scores[0]}-${t.scores[1]})`;
+    return `${head ? head + '\n' : ''}${nameOf(c, 0)} vs ${nameOf(c, 1)}\n${games || 'No games finished'}\n${status}`;
+  }
+  const resultText = () => resultTextFor(cfg, st);
   async function copyResult() {
     try { await navigator.clipboard.writeText(resultText()); $('copyBtn').textContent = 'Copied ✓'; }
     catch (e) { $('copyBtn').textContent = 'Copy not allowed'; }
@@ -475,6 +700,9 @@
       const w = st.results[st.results.length - 1].w;
       $('winTitle').textContent = `🏆 ${sideName(w)} win${cfg.doubles ? '' : 's'}!`;
       $('winText').textContent = st.results.map(r => `${r.s[0]}–${r.s[1]}`).join(',  ');
+      const n = nextMatch();
+      $('nextBtn').style.display = n ? '' : 'none';
+      if (n) $('nextBtn').textContent = `Next: ${nameOf(n.cfg, 0)} vs ${nameOf(n.cfg, 1)} →`;
     }
     $(id).classList.add('show'); if (id === 'history') renderHistory();
   }
@@ -493,6 +721,10 @@
   // Position (in % of court) of a service box.
   // The bottom side faces up, so their RIGHT is screen-right.
   // The top side faces down, so their RIGHT is screen-left.
+  // Landscape: the court is drawn turned 90° anticlockwise (far side on the left, near side on the right)
+  const isLand = () => window.innerWidth > window.innerHeight;
+  const place = pos => (isLand() ? { x: pos.y, y: 100 - pos.x } : pos);
+
   function boxPos(half, box) {
     const right = box === 'R';
     if (half === 'bottom') return { x: right ? 71 : 29, y: 72 };
@@ -521,7 +753,7 @@
       for (const k of [0, 1]) {
         const tok = $('tok' + p + k);
         tok.classList.toggle('hidden', !cfg.doubles && k === 1);
-        const pos = boxPos(half, boxOf(p, k));
+        const pos = place(boxPos(half, boxOf(p, k)));
         tok.style.left = pos.x + '%';
         tok.style.top = pos.y + '%';
         const isServer = p === st.side && k === sk;
@@ -532,8 +764,9 @@
       }
       const sc = $('score' + p);
       sc.firstChild.nodeValue = st.scores[p];
-      sc.style.left = '50%';
-      sc.style.top = (half === 'top' ? 11 : 89) + '%';
+      const sp = place({ x: 50, y: half === 'top' ? 11 : 89 });
+      sc.style.left = sp.x + '%';
+      sc.style.top = sp.y + '%';
       $('gw' + p).innerHTML = Array.from({ length: toWin() }, (_, i) => `<span class="dot ${i < st.games[p] ? 'on' : ''}"></span>`).join('');
     }
 
@@ -556,14 +789,23 @@
     }).join('') + (cfg.golden ? '<span class="chip current">⚡ Golden point</span>' : '');
   }
 
-  // Keep the court at real proportions (6.1 m wide x 13.4 m long)
+  // Keep the court at real proportions (6.1 m wide x 13.4 m long), upright or sideways
+  let lastLand = null;
   function fitCourt() {
-    const wrap = $('courtWrap'), court = $('court');
-    const W = wrap.clientWidth - 20 - 12, H = wrap.clientHeight - 12, ratio = 610 / 1340;
-    const w = Math.max(120, Math.min(W, H * ratio));
+    const wrap = $('courtWrap'), court = $('court'), land = isLand();
+    const W = wrap.clientWidth - 20 - 12, H = wrap.clientHeight - 12, r = 1340 / 610;
+    let w, h;
+    if (land) { h = Math.max(80, Math.min(H, W / r)); w = h * r; }
+    else      { w = Math.max(120, Math.min(W, H / r)); h = w * r; }
     court.style.width = w + 'px';
-    court.style.height = (w / ratio) + 'px';
-    court.style.setProperty('--cw', w + 'px');
+    court.style.height = h + 'px';
+    court.style.setProperty('--cw', Math.min(w, h) + 'px');   // short side drives all sizes
+    if (land !== lastLand) {
+      lastLand = land;
+      $('linesSvg').setAttribute('viewBox', land ? '0 0 1340 610' : '0 0 610 1340');
+      $('courtG').setAttribute('transform', land ? 'translate(0,610) rotate(-90)' : '');
+      render();
+    }
   }
   window.addEventListener('resize', fitCourt);
   if ('ResizeObserver' in window) new ResizeObserver(fitCourt).observe($('courtWrap'));
@@ -574,7 +816,24 @@
   document.addEventListener('click', keepAwake, { once: true });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
 
-  load(); fitCourt(); render();
+  // Phone keyboard: keep dialogs inside the visible area above the keyboard, and bring the typed field into view
+  function syncViewport() {
+    const vv = window.visualViewport; if (!vv) return;
+    document.documentElement.style.setProperty('--vvh', vv.height + 'px');
+    document.documentElement.style.setProperty('--vvtop', vv.offsetTop + 'px');
+  }
+  if (window.visualViewport) {
+    visualViewport.addEventListener('resize', syncViewport);
+    visualViewport.addEventListener('scroll', syncViewport);
+    syncViewport();
+  }
+  document.addEventListener('focusin', e => {
+    if (!e.target.closest('.sheet') || !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+    setTimeout(() => e.target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 350);  // after keyboard opens
+  });
+
+  load();
+  if (store.view === 'score' && curMatch()) openMatch(store.currentId); else goHome();
 
   // Offline support (works when hosted, e.g. GitHub Pages)
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
