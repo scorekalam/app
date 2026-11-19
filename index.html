@@ -210,6 +210,25 @@
     -webkit-line-clamp: 2; line-height: 1.25;
   }
   .banner.court-msg:empty { display: none; }
+  /* Quick-look score in the top centre (both orientations) */
+  .topbar { position: relative; }
+  .mini-score {
+    display: flex; align-items: center; gap: 6px; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    background: #1e293b; border: 1px solid #334155; border-radius: 999px; padding: 3px 10px;
+    font-weight: 800; font-size: 1.1rem; font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .mini-score .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .mini-score .s0 { background: var(--blue); } .mini-score .s1 { background: var(--red); }
+  .mini-score .dash { color: #64748b; font-weight: 400; }
+  .mini-score .dot.serving { box-shadow: 0 0 0 2px #0f172a, 0 0 0 4px var(--gold); }   /* serving team */
+  .mini-score .g { font-size: .72rem; color: #94a3b8; font-weight: 600; }
+  #scoreView .topbar .title { font-size: .8rem; }
+  @media (max-width: 380px) { .mini-score { font-size: 1rem; gap: 6px; padding: 2px 10px; } .mini-score .g { display: none; } }
+  .mini-score + .icon-btn { margin-left: auto; }   /* keep 📋 ⚙️ at the right edge */
+  @media (orientation: landscape) {
+    .mini-score { font-size: 1.25rem; padding: 3px 14px; gap: 8px; }
+    #scoreView .topbar .title { font-size: .85rem; }
+  }
 </style>
 </head>
 <body>
@@ -230,6 +249,7 @@
 <div class="topbar">
   <button class="icon-btn back-btn" onclick="goHome()" aria-label="Back to matches">‹</button>
   <div class="title" id="title">🏸 Badminton</div>
+  <div class="mini-score" id="miniScore" aria-live="polite"></div>
   <button class="icon-btn" onclick="show('history')" aria-label="Results">📋</button>
   <button class="icon-btn" onclick="openSettings()" aria-label="Settings">⚙️</button>
 </div>
@@ -784,6 +804,13 @@
     const at = (id, x, y) => { const q = place({ x, y }); $(id).style.left = q.x + '%'; $(id).style.top = q.y + '%'; };
     at('undoBtn', 11, 50); at('swapBtn', 89, 50); at('serverBtn', 50, 50); at('banner', 50, 60.5);
     $('swapBtn').textContent = isLand() ? '⇄' : '⇅';
+    // Quick-look score: same left/right order as the teams on the sideways court
+    const L = topSide(), R = 1 - L, srv = p => (st.side === p && !st.over ? ' serving' : '');
+    const g = cfg.format > 1 ? p => `<span class="g">(${st.games[p]})</span>` : () => '';
+    $('miniScore').innerHTML =
+      `<span class="dot s${L}${srv(L)}"></span>${g(L)}${st.scores[L]}` +
+      `<span class="dash">–</span>${st.scores[R]}${g(R)}<span class="dot s${R}${srv(R)}"></span>`;
+    fitTitle();
 
     for (const p of [0, 1]) {
       const half = halfOf(p);
@@ -826,6 +853,15 @@
     }).join('') + (cfg.golden ? '<span class="chip current">⚡ Golden point</span>' : '');
   }
 
+  // Title gets whatever room is left of the quick-look score; hidden if too narrow to read
+  function fitTitle() {
+    const t = $('title'), m = $('miniScore');
+    t.style.maxWidth = ''; t.style.visibility = '';
+    const room = m.getBoundingClientRect().left - t.getBoundingClientRect().left - 8;
+    t.style.maxWidth = Math.max(0, room) + 'px';
+    t.style.visibility = room < 80 ? 'hidden' : '';
+  }
+
   // Keep the court at real proportions (6.1 m wide x 13.4 m long), upright or sideways
   let lastLand = null;
   function fitCourt() {
@@ -837,6 +873,7 @@
     court.style.width = w + 'px';
     court.style.height = h + 'px';
     court.style.setProperty('--cw', Math.min(w, h) + 'px');   // short side drives all sizes
+    fitTitle();
     if (land !== lastLand) {
       lastLand = land;
       $('linesSvg').setAttribute('viewBox', land ? '0 0 1340 610' : '0 0 610 1340');

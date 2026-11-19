@@ -2,7 +2,7 @@
 // Online  -> always load the newest files from the server (and refresh the saved copy).
 // Offline -> use the saved copy, so the app still opens at the court.
 // Bump VERSION when you change any file.
-const VERSION = 'badminton-v5';
+const VERSION = 'badminton-v6';
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
