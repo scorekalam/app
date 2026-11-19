@@ -286,7 +286,7 @@
     <div class="field"><label for="inEvent">Event / Round</label><input id="inEvent" placeholder="e.g. Men's Singles – QF"></div>
     <div class="field"><label for="inMode">Match type</label>
       <select id="inMode" onchange="$('settings').classList.toggle('doubles-mode', this.value === 'd')">
-        <option value="s">Singles</option><option value="d">Doubles</option>
+        <option value="d">Doubles</option><option value="s">Singles</option>
       </select>
     </div>
     <div class="row">
@@ -408,7 +408,7 @@
   // ---- Matches list, saved on this phone ----
   // store.matches = [{ id, cfg, st, hist }], store.currentId = match on the court, store.last = format copied into new matches
   let store = { matches: [], currentId: null, view: 'home',
-                last: { event: '', court: '', doubles: false, format: 3, target: 21, golden: false } };
+                last: { event: '', court: '', doubles: true, format: 3, target: 21, golden: false } };   // doubles is the default match type
   const curMatch = () => store.matches.find(m => m.id === store.currentId);
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
@@ -426,7 +426,7 @@
     }
   }
   function saveIndex() {
-    writeKey(STORE_KEY, { order: store.matches.map(m => m.id), currentId: store.currentId, view: store.view, last: store.last });
+    writeKey(STORE_KEY, { order: store.matches.map(m => m.id), currentId: store.currentId, view: store.view, last: store.last, doublesDefault: true });
   }
   function saveMatch(m) { if (m) writeKey(MATCH_KEY(m.id), m); }
   function save() {
@@ -447,6 +447,7 @@
       const d = JSON.parse(localStorage.getItem(STORE_KEY));
       if (d && Array.isArray(d.order)) {
         store.currentId = d.currentId; store.view = d.view || 'home'; if (d.last) store.last = d.last;
+        if (!d.doublesDefault) store.last.doubles = true;          // one-time switch to doubles as default
         store.matches = d.order.map(id => { try { return JSON.parse(localStorage.getItem(MATCH_KEY(id))); } catch (e) { return null; } })
                                .filter(m => m && m.cfg && m.st);
       } else {
