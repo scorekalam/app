@@ -302,7 +302,7 @@
     <div class="fmt-summary" id="fmtSummary"><span id="fmtText"></span><button type="button" onclick="showFmtFields()">Change</button></div>
     <div id="fmtFields">
     <div class="field"><label for="inFormat">Games</label>
-      <select id="inFormat"><option value="3">Best of 3</option><option value="1">Single game</option><option value="5">Best of 5</option></select>
+      <select id="inFormat"><option value="1">Single game</option><option value="3">Best of 3</option><option value="5">Best of 5</option></select>
     </div>
     <div class="field"><label for="inTarget">Points per game</label>
       <select id="inTarget">
@@ -408,7 +408,7 @@
   // ---- Matches list, saved on this phone ----
   // store.matches = [{ id, cfg, st, hist }], store.currentId = match on the court, store.last = format copied into new matches
   let store = { matches: [], currentId: null, view: 'home',
-                last: { event: '', court: '', doubles: true, format: 3, target: 21, golden: false } };   // doubles is the default match type
+                last: { event: '', court: '', doubles: true, format: 1, target: 21, golden: false } };   // defaults: doubles, single game
   const curMatch = () => store.matches.find(m => m.id === store.currentId);
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
@@ -426,7 +426,7 @@
     }
   }
   function saveIndex() {
-    writeKey(STORE_KEY, { order: store.matches.map(m => m.id), currentId: store.currentId, view: store.view, last: store.last, doublesDefault: true });
+    writeKey(STORE_KEY, { order: store.matches.map(m => m.id), currentId: store.currentId, view: store.view, last: store.last, doublesDefault: true, singleGameDefault: true });
   }
   function saveMatch(m) { if (m) writeKey(MATCH_KEY(m.id), m); }
   function save() {
@@ -448,6 +448,7 @@
       if (d && Array.isArray(d.order)) {
         store.currentId = d.currentId; store.view = d.view || 'home'; if (d.last) store.last = d.last;
         if (!d.doublesDefault) store.last.doubles = true;          // one-time switch to doubles as default
+        if (!d.singleGameDefault) store.last.format = 1;           // one-time switch to single game as default
         store.matches = d.order.map(id => { try { return JSON.parse(localStorage.getItem(MATCH_KEY(id))); } catch (e) { return null; } })
                                .filter(m => m && m.cfg && m.st);
       } else {
