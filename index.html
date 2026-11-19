@@ -101,15 +101,6 @@
 
   .banner { min-height: 30px; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.3; padding: 6px 10px; text-align: center; font-weight: 700; color: var(--gold); font-size: .95rem; }
 
-  /* Bottom controls */
-  .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 10px 10px; }
-  .controls button {
-    background: #1e293b; color: #e2e8f0; border: none; border-radius: 12px; padding: 10px 4px;
-    font-size: .85rem; display: flex; flex-direction: column; align-items: center; gap: 2px;
-  }
-  .controls button span { font-size: 1.15rem; }
-  .controls.two { grid-template-columns: repeat(2, 1fr); }
-  .controls button:active { background: #334155; }
 
   /* Sheets / dialogs */
   .overlay { position: fixed; left: 0; right: 0; top: var(--vvtop, 0px); height: var(--vvh, 100%); background: rgba(0,0,0,.7); display: none; align-items: flex-end; justify-content: center; z-index: 20; }
@@ -142,16 +133,11 @@
   .win-title { font-size: 1.6rem; color: var(--gold); margin-bottom: 6px; }
   /* Layout wrapper: portrait = court above, banner + buttons below. Landscape = court left, panel right */
   .main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-  .side { display: flex; flex-direction: column; }
   @media (orientation: landscape) {
     .topbar { padding: 4px 10px; }
     .icon-btn { width: 34px; height: 34px; }
     .chips { padding-bottom: 4px; }
     .main { flex-direction: row; }
-    .courtWrap { padding: 0 6px 6px 10px; }
-    .side { width: 150px; justify-content: center; gap: 6px; padding: 0 10px 8px 0; }
-    .side .controls, .side .controls.two { grid-template-columns: 1fr; padding: 0; }
-    .side .banner { font-size: .85rem; padding: 4px; -webkit-line-clamp: 4; }
   }
   /* Big golden point banner across the net */
   .golden-banner {
@@ -206,6 +192,24 @@
   .toast { position: fixed; left: 50%; bottom: 96px; max-width: 88vw; text-align: center; box-shadow: 0 6px 18px rgba(0,0,0,.4); transform: translateX(-50%); background: #14532d; color: #fff;
            padding: 8px 16px; border-radius: 999px; font-weight: 600; z-index: 40; display: none; }
   .toast.show { display: block; }
+  /* Bigger court: no bottom bar, controls live on the net */
+  .courtWrap { padding: 2px 8px 8px !important; }
+  .court { box-shadow: 0 0 0 4px #14532d, 0 10px 30px rgba(0,0,0,.5); }
+  .court-btn {
+    position: absolute; transform: translate(-50%, -50%); z-index: 3;
+    width: max(46px, calc(var(--cw) * .14)); height: max(46px, calc(var(--cw) * .14)); border-radius: 50%;
+    background: rgba(15,23,42,.88); color: #fff; border: 2px solid rgba(255,255,255,.75);
+    font-size: max(20px, calc(var(--cw) * .07)); line-height: 1; padding: 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,.45);
+  }
+  .court-btn:active { background: var(--gold); color: #111; }
+  .banner.court-msg {
+    position: absolute; transform: translate(-50%, -50%); z-index: 2; pointer-events: none;
+    background: rgba(15,23,42,.82); border-radius: 999px; padding: 5px 12px; min-height: 0;
+    font-size: max(12px, calc(var(--cw) * .036)); max-width: calc(var(--cw) * .58); width: max-content;
+    -webkit-line-clamp: 2; line-height: 1.25;
+  }
+  .banner.court-msg:empty { display: none; }
 </style>
 </head>
 <body>
@@ -261,20 +265,16 @@
     <div class="score" id="score1" onclick="tapScore(1)">0<div class="gw" id="gw1"></div><div class="plus">TAP +1</div></div>
 
     <div id="tokens"></div>
+    <!-- Controls sit on the net: icons only -->
+    <div class="banner court-msg" id="banner">Tap a score to add a point</div>
+    <button class="court-btn" id="undoBtn" onclick="undo()" aria-label="Undo" title="Undo">↶</button>
+    <button class="court-btn" id="swapBtn" onclick="swapEnds()" aria-label="Switch ends" title="Switch ends">⇅</button>
+    <button class="court-btn" id="serverBtn" onclick="toggleServe()" aria-label="Change server" title="Change server">🏸</button>
     <div class="golden-banner" id="goldenBanner"><b>⚡ GOLDEN POINT</b><span>Next point wins</span></div>
 
   </div>
 </div>
 
-<div class="side">
-<div class="banner" id="banner">Tap a score to add a point</div>
-
-<div class="controls">
-  <button onclick="undo()"><span>↶</span>Undo</button>
-  <button onclick="swapEnds()"><span>⇅</span>Switch ends</button>
-  <button id="serverBtn" onclick="toggleServe()"><span>🏸</span>Server</button>
-</div>
-</div>
 </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -776,8 +776,12 @@
     $('court').classList.toggle('can-swap', canSwap());
     const goldenNow = cfg.golden && !st.over && st.scores[0] === st.scores[1] && st.scores[0] === cfg.target - 1;
     $('goldenBanner').classList.toggle('show', goldenNow);
+    $('banner').style.visibility = goldenNow ? 'hidden' : '';
     $('serverBtn').style.display = canChooseServer() ? '' : 'none';
-    document.querySelector('.controls').classList.toggle('two', !canChooseServer());
+    // Undo at the left end of the net, Switch ends at the right end, Server in the middle (0–0 only), message just below the net
+    const at = (id, x, y) => { const q = place({ x, y }); $(id).style.left = q.x + '%'; $(id).style.top = q.y + '%'; };
+    at('undoBtn', 11, 50); at('swapBtn', 89, 50); at('serverBtn', 50, 50); at('banner', 50, 60.5);
+    $('swapBtn').textContent = isLand() ? '⇄' : '⇅';
 
     for (const p of [0, 1]) {
       const half = halfOf(p);
@@ -824,7 +828,7 @@
   let lastLand = null;
   function fitCourt() {
     const wrap = $('courtWrap'), court = $('court'), land = isLand();
-    const W = wrap.clientWidth - 20 - 12, H = wrap.clientHeight - 12, r = 1340 / 610;
+    const W = wrap.clientWidth - 16 - 8, H = wrap.clientHeight - 8 - 8, r = 1340 / 610;
     let w, h;
     if (land) { h = Math.max(80, Math.min(H, W / r)); w = h * r; }
     else      { w = Math.max(120, Math.min(W, H / r)); h = w * r; }
