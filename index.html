@@ -20,7 +20,8 @@
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     touch-action: manipulation; user-select: none; -webkit-user-select: none;
   }
-  :root { --blue: #2563eb; --red: #dc2626; --gold: #facc15; }
+  :root { --blue: #2563eb; --red: #dc2626; --gold: #facc15;
+          --vvh: 100vh; --vvtop: 0px;   /* visible height / offset above the phone keyboard (updated by JS) */ }
 
   /* Top bar */
   .topbar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
@@ -282,35 +283,35 @@
 <div class="overlay" id="settings" onclick="if(event.target===this)closeAll()">
   <div class="sheet">
     <h2 id="setupTitle">Match setup</h2>
-    <div class="field"><label>Event / Round</label><input id="inEvent" placeholder="e.g. Men's Singles – QF"></div>
-    <div class="field"><label>Match type</label>
+    <div class="field"><label for="inEvent">Event / Round</label><input id="inEvent" placeholder="e.g. Men's Singles – QF"></div>
+    <div class="field"><label for="inMode">Match type</label>
       <select id="inMode" onchange="$('settings').classList.toggle('doubles-mode', this.value === 'd')">
         <option value="s">Singles</option><option value="d">Doubles</option>
       </select>
     </div>
     <div class="row">
-      <div class="field"><label>🔵 Blue side</label><input id="inA0" placeholder="Player A"></div>
-      <div class="field"><label>🔴 Red side</label><input id="inB0" placeholder="Player B"></div>
+      <div class="field"><label for="inA0">🔵 Blue side</label><input id="inA0" placeholder="Player A"></div>
+      <div class="field"><label for="inB0">🔴 Red side</label><input id="inB0" placeholder="Player B"></div>
     </div>
     <div class="row doubles-only">
-      <div class="field"><label>🔵 Partner</label><input id="inA1" placeholder="Partner A"></div>
-      <div class="field"><label>🔴 Partner</label><input id="inB1" placeholder="Partner B"></div>
+      <div class="field"><label for="inA1">🔵 Partner</label><input id="inA1" placeholder="Partner A"></div>
+      <div class="field"><label for="inB1">🔴 Partner</label><input id="inB1" placeholder="Partner B"></div>
     </div>
     <p class="muted doubles-only" style="margin-bottom:12px">Tip: at 0–0 of each game, tap a player on the court to swap that pair between the right and left boxes (decides who serves / receives first).</p>
-    <div class="field"><label>Court</label><input id="inCourt" placeholder="1" inputmode="numeric"></div>
+    <div class="field"><label for="inCourt">Court</label><input id="inCourt" placeholder="1" inputmode="numeric"></div>
     <div class="fmt-summary" id="fmtSummary"><span id="fmtText"></span><button type="button" onclick="showFmtFields()">Change</button></div>
     <div id="fmtFields">
-    <div class="field"><label>Games</label>
+    <div class="field"><label for="inFormat">Games</label>
       <select id="inFormat"><option value="3">Best of 3</option><option value="1">Single game</option><option value="5">Best of 5</option></select>
     </div>
-    <div class="field"><label>Points per game</label>
+    <div class="field"><label for="inTarget">Points per game</label>
       <select id="inTarget">
         <option value="21">21 points (cap 30)</option>
         <option value="15">15 points (cap 21)</option>
         <option value="11">11 points (cap 15)</option>
       </select>
     </div>
-    <div class="field"><label>At deuce (e.g. 20–20)</label>
+    <div class="field"><label for="inGolden">At deuce (e.g. 20–20)</label>
       <select id="inGolden" onchange="updatePointLabels()">
         <option value="0">Win by 2 points (normal)</option>
         <option value="1">Golden point – next point wins</option>
@@ -411,21 +412,49 @@
   const curMatch = () => store.matches.find(m => m.id === store.currentId);
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
+  // Storage layout: one small index (list order, current match, defaults) + one entry per match.
+  // Each tap saves only the match being scored, so a long list never slows scoring down.
+  // Undo history is the big part of a match; finished matches keep only their last 20 steps.
+  const MATCH_KEY = id => 'scorekalam-match-' + id;
+  const KEEP_DONE_UNDO = 20;
+  let storageWarned = false;
+  function writeKey(k, v) {
+    try { localStorage.setItem(k, JSON.stringify(v)); storageWarned = false; return true; }
+    catch (e) {
+      if (!storageWarned) { storageWarned = true; toast('⚠️ Phone storage full – delete old matches to keep saving'); }
+      return false;
+    }
+  }
+  function saveIndex() {
+    writeKey(STORE_KEY, { order: store.matches.map(m => m.id), currentId: store.currentId, view: store.view, last: store.last });
+  }
+  function saveMatch(m) { if (m) writeKey(MATCH_KEY(m.id), m); }
   function save() {
     const m = curMatch();
-    if (m) { m.cfg = cfg; m.st = st; m.hist = hist.slice(-200); }
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
+    if (m) { m.cfg = cfg; m.st = st; m.hist = hist.slice(-200); saveMatch(m); }
+    saveIndex();
+  }
+  // Called when leaving a match: shrink a finished match's undo history
+  function compact(m) {
+    if (m && m.st.over && (m.hist || []).length > KEEP_DONE_UNDO) {
+      m.hist = m.hist.slice(-KEEP_DONE_UNDO);
+      if (m === curMatch()) hist = m.hist;        // keep the in-memory copy in step, so a later save doesn't restore it
+      saveMatch(m);
+    }
   }
   function load() {
     try {
       const d = JSON.parse(localStorage.getItem(STORE_KEY));
-      if (d && Array.isArray(d.matches)) { store = Object.assign(store, d); }
-      else {
+      if (d && Array.isArray(d.order)) {
+        store.currentId = d.currentId; store.view = d.view || 'home'; if (d.last) store.last = d.last;
+        store.matches = d.order.map(id => { try { return JSON.parse(localStorage.getItem(MATCH_KEY(id))); } catch (e) { return null; } })
+                               .filter(m => m && m.cfg && m.st);
+      } else {
         const old = JSON.parse(localStorage.getItem(KEY));          // one-time upgrade from the single-match version
         if (old && old.cfg && old.st && old.cfg.players && old.st.right && (old.hist || []).length) {
-          const id = newId();
-          store.matches.push({ id, cfg: old.cfg, st: old.st, hist: old.hist || [] });
-          store.currentId = id; store.view = 'score';
+          const m = { id: newId(), cfg: old.cfg, st: old.st, hist: old.hist || [] };
+          store.matches.push(m); store.currentId = m.id; store.view = 'score';
+          saveMatch(m); saveIndex();
         }
       }
     } catch (e) {}
@@ -596,6 +625,7 @@
     const m = { id: newId(), cfg: c, st: fresh(), hist: [] };
     store.matches.push(m);
     store.last = { event: c.event, court: c.court, doubles: c.doubles, format: c.format, target: c.target, golden: c.golden };
+    saveMatch(m); saveIndex();
     return m;
   }
   function addMatch(start) {
@@ -615,7 +645,7 @@
     openMatch(m.id);
   }
   function openMatch(id) {
-    save();
+    save(); compact(curMatch());
     const m = store.matches.find(x => x.id === id); if (!m) return;
     store.currentId = id; store.view = 'score';
     cfg = m.cfg; st = m.st; hist = m.hist || [];
@@ -624,7 +654,7 @@
     lastLand = null; fitCourt(); render(); save();
   }
   function goHome() {
-    save(); closeAll();
+    save(); compact(curMatch()); closeAll();
     store.view = 'home'; save();
     $('scoreView').classList.add('hidden'); $('homeView').classList.remove('hidden');
     renderHome();
@@ -638,7 +668,8 @@
     askConfirm(`Delete ${nameOf(m.cfg, 0)} vs ${nameOf(m.cfg, 1)}?`, () => {
       store.matches = store.matches.filter(x => x.id !== id);
       if (store.currentId === id) store.currentId = null;
-      save(); renderHome();
+      try { localStorage.removeItem(MATCH_KEY(id)); } catch (e) {}
+      saveIndex(); renderHome();
     }, 'Delete', 'This match and its score will be removed from this phone.');
   }
   function renderHome() {
@@ -831,6 +862,9 @@
     if (!e.target.closest('.sheet') || !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
     setTimeout(() => e.target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 350);  // after keyboard opens
   });
+
+  // Ask the browser not to clear our saved matches when the phone is low on space
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
 
   load();
   if (store.view === 'score' && curMatch()) openMatch(store.currentId); else goHome();
